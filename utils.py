@@ -5,6 +5,7 @@ import numpy as np
 from models import simple_cnns
 from models import residual_nets
 from tensorflow.examples.tutorials.mnist import input_data
+from tensorflow.python.framework import ops
 import ipdb
 
 class Dataset:
@@ -121,56 +122,6 @@ def get_dataset_placeholders(batch_size, dataset):
     y_pl = tf.placeholder(tf.float32, shape=(batch_size, dataset.n_classes))
     return (x_pl, y_pl)
 
-# here the network is used for training and testing.
-# This mean that the same batch_size is used in both phases.
-def train_test01(params):
-    # start get params
-    logits_getter = params['logits_getter']
-    loss_getter = params['loss_getter']
-    batch_size = params['batch_size']
-
-    weight_decay = params['weight_decay']  # TODO Not implemented.
-
-    base_lr = params['base_lr']
-    lr_decay = params['lr_decay']
-    lr_decay_step = params['lr_decay_step']
-    momentum = params['momentum']
-
-    max_epochs = params['max_epochs']
-
-    save_every_x_epoch = params['save_every_x_epoch']  # TODO Not implemented.
-
-    rand_state = params['rand_state']
-
-    train_test_datasets_getter = params['train_test_datasets_getter']
-    # end get params
-
-    ipdb.set_trace()
-    train_test_ds = train_test_datasets_getter()
-    n_classes = train_test_ds.n_classes
-
-    x_pl, y_pl = get_dataset_placeholders(batch_size, train_test_ds.train)
-
-    logits = logits_getter(x_pl, n_classes)
-    
-    loss = loss_getter(logits, y_pl)
-    predictions = tf.nn.softmax(logits)
-
-    batches_seen = tf.Variable(0, name='batches_seen', trainable=False)
-    train_size = train_test_ds.train.size()
-    learning_rate = tf.train.exponential_decay(base_lr, batches_seen*batch_size, lr_decay_step*train_size, lr_decay, staircase=True)
-    optimizer = tf.train.MomentumOptimizer(learning_rate, momentum).minimize(loss, global_step=batches_seen)
-
-    with tf.Session() as sess:
-        tf.initialize_all_variables().run()
-        print('Variables Initialized!')
-        for epoch in xrange(1, max_epochs+1):
-            print("Epoch %d/%d. Starting training." % (epoch,max_epochs))
-            run_for_one_epoch(sess, rand_state, batch_size, train_test_ds.train, x_pl, y_pl, predictions, optimizer=optimizer,
-                              loss=loss, learning_rate=learning_rate)
-            print("Epoch %d/%d. Starting testing." % (epoch,max_epochs))
-            run_for_one_epoch(sess, rand_state, batch_size, train_test_ds.test, x_pl, y_pl, predictions)
-
 def softmax_cross_entropy_with_logits_loss_getter(logits, y_pl):
     return tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits, y_pl))
 
@@ -222,4 +173,70 @@ def test_train_test01():
 
     params['train_test_datasets_getter'] = mnist_train_test_datasets_getter
 
+    params['graph_save_path'] = None
+
     train_test01(params)
+
+# here the network is used for training and testing.
+# This mean that the same batch_size is used in both phases.
+def train_test01(params):
+    # start get params
+    logits_getter = params['logits_getter']
+    loss_getter = params['loss_getter']
+    batch_size = params['batch_size']
+
+    weight_decay = params['weight_decay']  # TODO Not implemented.
+
+    base_lr = params['base_lr']
+    lr_decay = params['lr_decay']
+    lr_decay_step = params['lr_decay_step']
+    momentum = params['momentum']
+
+    max_epochs = params['max_epochs']
+
+    save_every_x_epoch = params['save_every_x_epoch']  # TODO Not implemented.
+
+    rand_state = params['rand_state']
+
+    train_test_datasets_getter = params['train_test_datasets_getter']
+
+    graph_save_path = params['graph_save_path']
+    # end get params
+
+
+    ops.reset_default_graph()
+
+    train_test_ds = train_test_datasets_getter()
+    n_classes = train_test_ds.n_classes
+
+    x_pl, y_pl = get_dataset_placeholders(batch_size, train_test_ds.train)
+
+    logits = logits_getter(x_pl, n_classes)
+    
+    loss = loss_getter(logits, y_pl)
+    predictions = tf.nn.softmax(logits)
+
+    batches_seen = tf.Variable(0, name='batches_seen', trainable=False)
+    train_size = train_test_ds.train.size()
+    learning_rate = tf.train.exponential_decay(base_lr, batches_seen*batch_size, lr_decay_step*train_size, lr_decay, staircase=True)
+    optimizer = tf.train.MomentumOptimizer(learning_rate, momentum).minimize(loss, global_step=batches_seen)
+
+    writer = None
+    try:
+        with tf.Session() as sess:
+            if graph_save_path is not None:
+                writer = tf.train.SummaryWriter(graph_save_path, sess.graph_def)
+            tf.initialize_all_variables().run()
+            print('Variables Initialized!')
+            for epoch in xrange(1, max_epochs+1):
+                print("Epoch %d/%d. Starting train." % (epoch,max_epochs))
+                run_for_one_epoch(sess, rand_state, batch_size, train_test_ds.train, x_pl, y_pl, predictions, optimizer=optimizer,
+                                  loss=loss, learning_rate=learning_rate)
+                print("Starting test.")
+                run_for_one_epoch(sess, rand_state, batch_size, train_test_ds.test, x_pl, y_pl, predictions)
+    except KeyboardInterrupt:
+        print("\n\nExiting!!\n")
+    finally:
+        if writer is not None:
+            writer.close()
+
