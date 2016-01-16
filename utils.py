@@ -239,4 +239,3 @@ def train_test01(params):
     finally:
         if writer is not None:
             writer.close()
-
