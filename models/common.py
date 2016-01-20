@@ -1,16 +1,21 @@
 import tensorflow as tf
 
+def print_shape(x):
+    print("'%s' - shape: %s"%(x.name, str(x.get_shape())))
 
-def add_loss_summaries(total_loss):
-    losses = tf.get_collection('wd_losses')+[total_loss]
+def add_loss_summaries(losses):
+    losses = tf.get_collection('wd_losses')+losses
     for l in losses:
         tf.scalar_summary(l.op.name, l)
-    return loss_averages_op
 
 def activation_summary(x):
     op_name =  x.op.name
     tf.histogram_summary(op_name + '/activations', x)
     tf.scalar_summary(op_name + '/sparsity', tf.nn.zero_fraction(x))
+
+def activation_image_summary(x, tag, max_images):
+    a,b,c,d = x.get_shape().as_list()
+    tf.image_summary(tag, tf.reshape(tf.transpose(x, [0,3,1,2]), [a*d, b, c, 1]), max_images=max_images)
 
 def loss(logits, onehot_labels):
     top_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits, onehot_labels))
@@ -22,7 +27,7 @@ def variable_with_weight_decay(name, shape, weight_init, weight_decay):
     var = tf.get_variable(name, shape, initializer=weight_init)
     if weight_decay is not None and weight_decay > 0:
         weight_decay_loss = tf.mul(tf.nn.l2_loss(var), weight_decay, name='weight_loss')
-        tf.add_to_collection('wd_losses', weight_decay)
+        tf.add_to_collection('wd_losses', weight_decay_loss)
     return var
 
 def get_conv_plus_bias_block(input_, kernel_size, n_channels, n_filters, uniform=True, weight_decay=None, subsample=1):

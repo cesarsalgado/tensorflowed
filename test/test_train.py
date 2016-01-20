@@ -34,7 +34,11 @@ def test_train_test01():
 
     params['max_epochs'] = 3
 
-    params['save_every_x_epoch'] = 1
+    params['checkpoint_epoch_step'] = 1
+    params['checkpoint_path'] = MNIST_PATH
+
+    params['summary_batch_step'] = 30
+    params['console_print_step'] = 10
 
     params['rand_state'] = np.random.RandomState(1)
 
