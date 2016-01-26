@@ -29,7 +29,3 @@ class MeanCenterStdToOneNorm:
             return r
         else:
             raise ValueError
-
-
-def get_3_argument_model_builder(std_model_builder, model_params):
-    return lambda a,b,c: std_model_builder(a, b, c, **model_params)

@@ -66,31 +66,36 @@ class TrainValTestDatasets:
 
 
 class OneEpochBatchIterator:
-    def __init__(self, rand_state, batch_size, dataset):
+    def __init__(self, rand_state, batch_size, dataset, only_count=False):
         self.batch_size = batch_size
         self.dataset = dataset
         self.size = dataset.size()
         self.rem = self.size%batch_size
         self.n_batches = self.size//batch_size + bool(self.rem)
         self.batch_idx = 0
-        self.perm = rand_state.permutation(self.size)
+        self.only_count = only_count
+        if not only_count:
+            self.perm = rand_state.permutation(self.size)
 
     def has_next(self):
         return self.batch_idx < self.n_batches
 
     def next(self):
-        start = self.batch_idx*self.batch_size
-        if self.batch_idx == self.n_batches-1 and self.rem > 0:
-            end = start + self.rem
-            n_to_fill = self.batch_size-self.rem
-            left_inds = self.perm[start:]
-            right_inds = self.perm[:n_to_fill]
-            inds = np.hstack((left_inds, right_inds))
-            n_used = self.rem
+        if self.only_count:
+            x = y = n_used = None
         else:
-            inds = self.perm[start:start+self.batch_size]
-            n_used = self.batch_size
-        x = self.dataset.get_x(inds)
-        y = self.dataset.get_y(inds)
+            start = self.batch_idx*self.batch_size
+            if self.batch_idx == self.n_batches-1 and self.rem > 0:
+                end = start + self.rem
+                n_to_fill = self.batch_size-self.rem
+                left_inds = self.perm[start:]
+                right_inds = self.perm[:n_to_fill]
+                inds = np.hstack((left_inds, right_inds))
+                n_used = self.rem
+            else:
+                inds = self.perm[start:start+self.batch_size]
+                n_used = self.batch_size
+            x = self.dataset.get_x(inds)
+            y = self.dataset.get_y(inds)
         self.batch_idx += 1
         return x, y, n_used
