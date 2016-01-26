@@ -71,7 +71,7 @@ def run_for_one_epoch(epoch, sess, rand_state, batch_size, dataset, x_var, y_var
     print(phase, ' accuracy: %.3f' % accu)
     return accu
 
-def get_train_op(losses, batches_seen, batch_size, train_size, base_lr, momentum, lr_decay_step, lr_decay):
+def get_train_op(losses, batches_seen, batch_size, train_size, optimizer, base_lr, optimizer_params, lr_decay_step, lr_decay):
     lr = tf.train.exponential_decay(base_lr,
                                     batches_seen*batch_size,
                                     lr_decay_step*train_size,
@@ -81,7 +81,11 @@ def get_train_op(losses, batches_seen, batch_size, train_size, base_lr, momentum
 
     common.add_loss_summaries(losses)
 
-    opt = tf.train.MomentumOptimizer(lr, momentum)
+    if optimizer_params is None:
+        opt = optimizer(lr)
+    else:
+        opt = optimizer(lr, **optimizer_params)
+
     grads = opt.compute_gradients(losses[0])
 
     apply_gradient_op = opt.apply_gradients(grads, global_step=batches_seen)
@@ -107,7 +111,9 @@ def train(params):
     base_lr = params['base_lr']
     lr_decay = params['lr_decay']
     lr_decay_step = params['lr_decay_step']
-    momentum = params['momentum']
+
+    optimizer = params['optimizer']
+    optimizer_params = params['optimizer_params']
 
     max_epochs = params['max_epochs']
 
@@ -157,7 +163,7 @@ def train(params):
     
     batches_seen = tf.Variable(0, name='batches_seen', trainable=False)
     train_size = train_test_ds.train.size()
-    train_op, learning_rate = get_train_op(list(losses), batches_seen, batch_size, train_size, base_lr, momentum, lr_decay_step, lr_decay)
+    train_op, learning_rate = get_train_op(list(losses), batches_seen, batch_size, train_size, optimizer, base_lr, optimizer_params, lr_decay_step, lr_decay)
 
     tf.image_summary('images', x_train, max_images=10)
 
