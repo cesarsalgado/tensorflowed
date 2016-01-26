@@ -153,13 +153,8 @@ def train(params):
 
     x_test, y_test = get_dataset_placeholders(batch_size, train_test_ds.test)
 
-    # TODO: How to reuse variable without putting the two models under the same scope.
-    # The way is now many layers are held under the same tab in ternsorboard and
-    # that is bad.
-    with tf.variable_scope("train_and_eval") as scope:
-        logits_train, losses = model.logits_train(x_train, y_train)
-        scope.reuse_variables()
-        logits_eval, _ = model.logits_eval(x_test, y_test)
+    logits_train, losses = model.logits_train(x_train, y_train)
+    logits_eval, _ = model.logits_eval(x_test, y_test, reuse=True)
     
     batches_seen = tf.Variable(0, name='batches_seen', trainable=False)
     train_size = train_test_ds.train.size()
